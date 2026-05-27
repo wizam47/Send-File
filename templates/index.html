@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Send File — Transferencia de Archivos</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23000'/><path d='M16 6 L22 13 H18 V19 H14 V13 H10 Z' fill='%2300ff0d'/><rect x='9' y='21' width='14' height='2.5' rx='1.2' fill='%2300ff0d'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --green: rgb(0, 255, 13);
+      --green-dim: rgba(0, 255, 13, 0.15);
+      --green-mid: rgba(0, 255, 13, 0.45);
+      --white: #ffffff;
+      --muted: rgba(255,255,255,0.45);
+      --border: rgba(255,255,255,0.08);
+      --surface: rgba(255,255,255,0.04);
+      --surface-hover: rgba(255,255,255,0.07);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: #000;
+      color: var(--white);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 400;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* ── NAV ────────────────────────────────────────────── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 48px;
+      height: 64px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(16px);
+    }
+    .nav-logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800; font-size: 1.25rem;
+      display: flex; align-items: center; gap: 8px;
+      letter-spacing: -0.02em;
+      text-decoration: none;
+      color: var(--white);
+      cursor: pointer;
+    }
+    .nav-logo span { color: var(--green); }
+    .nav-links {
+      display: flex; gap: 32px; list-style: none;
+    }
+    .nav-links a {
+      color: var(--muted); text-decoration: none;
+      font-size: 0.875rem; font-weight: 500;
+      letter-spacing: 0.01em;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--white); }
+    .nav-cta {
+      background: var(--white); color: #000;
+      border: none; padding: 8px 20px;
+      border-radius: 100px; font-family: 'DM Sans', sans-serif;
+      font-size: 0.875rem; font-weight: 500;
+      cursor: pointer; transition: opacity 0.2s;
+      text-decoration: none;
+    }
+    .nav-cta:hover { opacity: 0.85; }
+
+    /* ── HERO ───────────────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-items: center;
+      padding: 40px 0 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* animation side */
+    .hero-visual {
+      position: relative;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .circles-scene {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      perspective: 800px;
+    }
+    .circle {
+      position: absolute;
+      background: transparent;
+      width: calc(var(--i) * 2.6vmin);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      border: 2px solid var(--green);
+      transform-style: preserve-3d;
+      transform: rotateX(70deg) translateZ(50px);
+      animation: float 3s ease-in-out calc(var(--i) * 0.08s) infinite;
+      box-shadow: 0 0 10px var(--green-mid), inset 0 0 10px rgba(124,124,124,0.2);
+    }
+    @keyframes float {
+      0%, 100% {
+        transform: rotateX(70deg) translateZ(50px) translateY(0);
+        filter: hue-rotate(0deg);
+      }
+      50% {
+        transform: rotateX(70deg) translateZ(50px) translateY(-46vmin);
+        filter: hue-rotate(360deg);
+      }
+    }
+
+    /* text side */
+    .hero-content {
+      padding: 0 64px 0 0;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--green-dim);
+      border: 1px solid var(--green-mid);
+      color: var(--green);
+      font-size: 0.75rem; font-weight: 500;
+      padding: 5px 14px; border-radius: 100px;
+      width: fit-content; letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .hero-badge::before {
+      content: ''; width: 6px; height: 6px;
+      background: var(--green); border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.7); }
+    }
+    .hero-title {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(2.2rem, 4vw, 3.6rem);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+    }
+    .hero-title em {
+      font-style: normal;
+      color: var(--green);
+    }
+    .hero-sub {
+      color: var(--muted);
+      font-size: 1.0625rem;
+      line-height: 1.65;
+      max-width: 400px;
+    }
+    .hero-actions {
+      display: flex; gap: 12px; align-items: center;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      background: var(--green);
+      color: #000;
+      border: none; padding: 12px 28px;
+      border-radius: 100px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9375rem; font-weight: 600;
+      cursor: pointer; transition: opacity 0.2s, transform 0.15s;
+      text-decoration: none;
+    }
+    .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border); padding: 12px 24px;
+      border-radius: 100px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9375rem; font-weight: 400;
+      cursor: pointer; transition: border-color 0.2s, color 0.2s;
+      text-decoration: none;
+    }
+    .btn-ghost:hover { border-color: rgba(255,255,255,0.25); color: var(--white); }
+
+    /* divider line at bottom of hero */
+    .hero::after {
+      content: '';
+      position: absolute; bottom: 0; left: 10%; right: 10%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+    }
+
+    /* ── MAIN CONTENT ───────────────────────────────────── */
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 80px 24px 120px;
+    }
+
+    .section-label {
+      font-size: 0.75rem; font-weight: 500;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--green); margin-bottom: 50px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1; height: 1px;
+      background: var(--border);
+    }
+
+    /* upload */
+    .upload-zone {
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px;
+      background: var(--surface);
+      margin-bottom: 64px;
+      transition: border-color 0.3s, background 0.3s;
+    }
+    .upload-zone:hover { border-color: rgba(0,255,13,0.3); background: rgba(0,255,13,0.03); }
+    .upload-zone h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.375rem; font-weight: 700;
+      margin-bottom: 6px; letter-spacing: -0.02em;
+    }
+    .upload-zone p {
+      color: var(--muted); font-size: 0.9rem; margin-bottom: 24px;
+    }
+    .upload-row {
+      display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    }
+    .file-label {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 10px 18px; border-radius: 10px;
+      cursor: pointer; font-size: 0.875rem;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .file-label:hover { border-color: rgba(255,255,255,0.2); color: var(--white); }
+    .file-label svg { flex-shrink: 0; }
+    input[type="file"] { display: none; }
+    #file-name {
+      font-size: 0.8125rem; color: var(--muted);
+      max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .btn-upload {
+      background: var(--green);
+      color: #000;
+      border: none; padding: 10px 24px;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.875rem; font-weight: 600;
+      cursor: pointer;
+      margin-left: auto;
+      transition: background 0.35s, color 0.35s, opacity 0.2s, transform 0.15s;
+      display: flex; align-items: center; gap: 8px;
+      min-width: 90px; justify-content: center;
+    }
+    .btn-upload:not(:disabled):hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn-upload:disabled {
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.25);
+      cursor: not-allowed;
+    }
+    /* spinner inside button */
+    .btn-upload .spinner {
+      display: none;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(0,0,0,0.25);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    .btn-upload.loading .spinner { display: block; }
+    .btn-upload.loading .btn-label { opacity: 0.7; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* full-screen loading overlay */
+    #upload-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 999;
+      background: rgba(0,0,0,0.82);
+      backdrop-filter: blur(6px);
+      flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 28px;
+    }
+    #upload-overlay.active { display: flex; }
+    .overlay-ring {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      border: 3px solid rgba(0,255,13,0.15);
+      border-top-color: var(--green);
+      animation: spin 0.9s linear infinite;
+      box-shadow: 0 0 24px rgba(0,255,13,0.3);
+    }
+    .overlay-text {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem; font-weight: 600;
+      color: var(--green); letter-spacing: 0.06em;
+      text-transform: uppercase;
+      animation: blink 1.4s ease-in-out infinite;
+    }
+    .overlay-file {
+      font-size: 0.8125rem; color: var(--muted);
+      max-width: 280px; text-align: center;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+    }
+
+    /* files list */
+    .files-grid { display: flex; flex-direction: column; gap: 8px; }
+
+    @keyframes fileIn {
+      from {
+        opacity: 0;
+        transform: translateY(14px) scale(0.97);
+        border-color: var(--green-mid);
+        box-shadow: 0 0 0 0 var(--green-dim);
+      }
+      60% {
+        border-color: var(--green-mid);
+        box-shadow: 0 0 18px 2px var(--green-dim);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        border-color: var(--border);
+        box-shadow: none;
+      }
+    }
+    @keyframes fileOut {
+      from {
+        opacity: 1;
+        transform: translateX(0) scaleY(1);
+        max-height: 80px;
+        margin-bottom: 0;
+      }
+      40% {
+        opacity: 0;
+        transform: translateX(32px) scaleY(1);
+        max-height: 80px;
+      }
+      to {
+        opacity: 0;
+        transform: translateX(32px) scaleY(0);
+        max-height: 0;
+        padding-top: 0; padding-bottom: 0;
+        margin-bottom: -8px;
+      }
+    }
+
+    .file-item {
+      display: flex; align-items: center; gap: 16px;
+      padding: 16px 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      transition: background 0.2s, border-color 0.2s;
+      animation: fileIn 0.5s cubic-bezier(0.22,1,0.36,1) both;
+      overflow: hidden;
+    }
+    .file-item.leaving {
+      animation: fileOut 0.35s ease forwards;
+      pointer-events: none;
+    }
+    .file-item:hover { background: var(--surface-hover); border-color: rgba(255,255,255,0.12); }
+    .file-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: var(--green-dim);
+      border: 1px solid var(--green-mid);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .file-icon svg { color: var(--green); }
+    .file-name-text {
+      flex: 1; font-size: 0.9375rem; font-weight: 400;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .file-actions { display: flex; gap: 8px; }
+    .btn-dl, .btn-rm {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: 8px;
+      font-size: 0.8125rem; font-weight: 500;
+      text-decoration: none; cursor: pointer;
+      transition: background 0.15s;
+      border: none;
+    }
+    .btn-dl {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid var(--green-mid);
+    }
+    .btn-dl:hover { background: rgba(0,255,13,0.22); }
+    .btn-rm {
+      background: rgba(255,60,60,0.1);
+      color: rgba(255,100,100,0.85);
+      border: 1px solid rgba(255,60,60,0.15);
+    }
+    .btn-rm:hover { background: rgba(255,60,60,0.18); }
+
+    .empty-state {
+      text-align: center; padding: 60px 24px;
+      color: var(--muted); font-size: 0.9375rem;
+      border: 1px dashed var(--border); border-radius: 16px;
+    }
+    .empty-state svg { margin-bottom: 12px; opacity: 0.3; }
+
+    /* ── BRANDS BAR ─────────────────────────────────────── */
+    .brands-bar {
+      border-top: 1px solid var(--border);
+      padding: 20px 48px;
+      display: flex; align-items: center; justify-content: center; gap: 48px;
+      background: rgba(255,255,255,0.02);
+      overflow: hidden;
+    }
+    .brands-bar span {
+      font-size: 0.75rem; font-weight: 500;
+      color: rgba(255,255,255,0.15);
+      letter-spacing: 0.08em; text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    /* ── SCROLLBAR ──────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #000; }
+    ::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
+
+    @media (max-width: 768px) {
+      nav { padding: 0 20px; }
+      .nav-links { display: none; }
+      .hero { grid-template-columns: 1fr; padding-top: 64px; min-height: auto; }
+      .hero-visual { height: 220px; min-height: unset; overflow: hidden; }
+      .circles-scene { transform: translateY(30%); }
+      .hero-content { padding: 16px 24px 48px; order: 2; }
+      .hero-title { font-size: 2rem; }
+      main { padding: 48px 16px 80px; }
+      .upload-zone { padding: 24px; }
+      .file-item { flex-wrap: wrap; gap: 12px; }
+      .file-actions { width: 100%; justify-content: flex-end; }
+      .brands-bar { gap: 24px; padding: 16px 24px; flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <a class="nav-logo" href="#" onclick="smoothTop();return false;">Send<span> File</span></a>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <!-- 3D circles animation -->
+    <div class="hero-visual">
+      <div class="circles-scene">
+        <div class="circle" style="--i:0;"></div>
+        <div class="circle" style="--i:1;"></div>
+        <div class="circle" style="--i:2;"></div>
+        <div class="circle" style="--i:3;"></div>
+        <div class="circle" style="--i:4;"></div>
+        <div class="circle" style="--i:5;"></div>
+        <div class="circle" style="--i:6;"></div>
+        <div class="circle" style="--i:7;"></div>
+        <div class="circle" style="--i:8;"></div>
+        <div class="circle" style="--i:9;"></div>
+        <div class="circle" style="--i:10;"></div>
+        <div class="circle" style="--i:11;"></div>
+        <div class="circle" style="--i:12;"></div>
+        <div class="circle" style="--i:13;"></div>
+        <div class="circle" style="--i:14;"></div>
+        <div class="circle" style="--i:15;"></div>
+        <div class="circle" style="--i:16;"></div>
+        <div class="circle" style="--i:17;"></div>
+        <div class="circle" style="--i:18;"></div>
+        <div class="circle" style="--i:19;"></div>
+        <div class="circle" style="--i:20;"></div>
+        <div class="circle" style="--i:21;"></div>
+        <div class="circle" style="--i:22;"></div>
+        <div class="circle" style="--i:23;"></div>
+        <div class="circle" style="--i:24;"></div>
+        <div class="circle" style="--i:25;"></div>
+        <div class="circle" style="--i:26;"></div>
+        <div class="circle" style="--i:27;"></div>
+        <div class="circle" style="--i:28;"></div>
+        <div class="circle" style="--i:29;"></div>
+        <div class="circle" style="--i:30;"></div>
+      </div>
+    </div>
+
+    <!-- text -->
+    <div class="hero-content">
+      <div class="hero-badge">En tu red local</div>
+      <h1 class="hero-title">
+        Transfiere archivos<br>
+        a <em>la velocidad</em><br>
+        de tu WiFi.
+      </h1>
+      <p class="hero-sub">
+        Sin cables, sin cuentas. Conecta tu celular y tu PC en segundos escaneando el QR.
+      </p>
+      <div class="hero-actions">
+        <a class="btn-primary" href="#transferir">Comenzar ahora</a>
+        <a class="btn-ghost" href="{{ server_url }}/qr" target="_blank">Ver QR →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN -->
+  <main>
+
+    <!-- UPLOAD -->
+    <section id="transferir">
+      <div class="section-label">Subir archivo</div>
+      <div class="upload-zone">
+        <h2>⬆ Enviar al servidor</h2>
+        <p>Selecciona una imagen o documento desde este dispositivo</p>
+        <form action="/upload" method="post" enctype="multipart/form-data">
+          <div class="upload-row">
+            <label class="file-label" for="file-input">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              Elegir archivo
+            </label>
+            <input type="file" name="file" id="file-input" required>
+            <span id="file-name" style="font-size:0.8125rem; color:var(--muted);">ningún archivo seleccionado</span>
+            <button type="submit" id="btn-upload" class="btn-upload" disabled>
+              <span class="spinner"></span>
+              <span class="btn-label">Subir</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+  <!-- overlay de carga -->
+  <div id="upload-overlay">
+    <div class="overlay-ring"></div>
+    <span class="overlay-text">Subiendo archivo…</span>
+    <span class="overlay-file" id="overlay-filename"></span>
+  </div>
+
+    <!-- FILES LIST -->
+    <section id="archivos">
+      <div class="section-label">Archivos disponibles</div>
+      <div class="files-grid">
+        {% if files %}
+          {% for file in files %}
+          <div class="file-item">
+            <div class="file-icon">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+            </div>
+            <span class="file-name-text">{{ file }}</span>
+            <div class="file-actions">
+              <a class="btn-dl" href="/download/{{ file }}">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Descargar
+              </a>
+              <a class="btn-rm" href="/delete/{{ file }}"
+                 onclick="return confirm('¿Eliminar {{ file }}?')">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                  <path d="M10 11v6M14 11v6"/>
+                </svg>
+                Eliminar
+              </a>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">
+            <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+            <p>Ningún archivo subido aún.<br>Usa el formulario de arriba para comenzar.</p>
+          </div>
+        {% endif %}
+      </div>
+    </section>
+
+  </main>
+
+  <!-- BRANDS BAR -->
+  <div class="brands-bar">
+    <span>WiFi directo</span>
+    <span>Sin internet</span>
+    <span>Sin registro</span>
+    <span>Imágenes</span>
+    <span>Documentos</span>
+    <span>500 MB máx</span>
+    <span>QR integrado</span>
+  </div>
+
+  
+  <script>
+    /* ── scroll al top al cargar ── */
+    history.scrollRestoration = 'manual';
+    window.scrollTo(0, 0);
+
+    /* ── función scroll suave al tope ── */
+    function smoothTop() {
+      var start = window.scrollY;
+      if (start === 0) return;
+      var isMobile = window.innerWidth <= 768;
+      var duration = isMobile ? 200 : 800;
+      var startTime = null;
+      function easeInOutQuart(t) { return t < 0.5 ? 8*t*t*t*t : 1 - Math.pow(-2*t+2,4)/2; }
+      function step(ts) {
+        if (!startTime) startTime = ts;
+        var p = Math.min((ts - startTime) / duration, 1);
+        window.scrollTo(0, start * (1 - easeInOutQuart(p)));
+        if (p < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    /* ── smooth scroll ── */
+    document.querySelectorAll('a[href^="#"]').forEach(function(link) {
+      link.addEventListener('click', function(e) {
+        var targetId = this.getAttribute('href').slice(1);
+        var target = document.getElementById(targetId);
+        if (!target) return;
+        e.preventDefault();
+        var start = window.scrollY;
+        var end = target.getBoundingClientRect().top + start - 72;
+        var distance = end - start;
+        var isMobile = window.innerWidth <= 768;
+        var duration = isMobile ? 200 : 800; 
+        var startTime = null;
+        function easeInOutQuart(t) { return t < 0.5 ? 8*t*t*t*t : 1 - Math.pow(-2*t+2,4)/2; }
+        function step(ts) {
+          if (!startTime) startTime = ts;
+          var p = Math.min((ts - startTime) / duration, 1);
+          window.scrollTo(0, start + distance * easeInOutQuart(p));
+          if (p < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      });
+    });
+
+    /* ── refs DOM ── */
+    var fileInput = document.getElementById('file-input');
+    var fileLabel = document.getElementById('file-name');
+    var btnUpload = document.getElementById('btn-upload');
+    var overlay   = document.getElementById('upload-overlay');
+    var overlayFn = document.getElementById('overlay-filename');
+    var filesGrid = document.querySelector('.files-grid');
+
+    /* ── habilitar/deshabilitar botón ── */
+    fileInput.addEventListener('change', function() {
+      var file = this.files[0];
+      if (file) {
+        fileLabel.textContent = file.name;
+        fileLabel.style.color = 'var(--white)';
+        btnUpload.disabled = false;
+      } else {
+        fileLabel.textContent = 'ningún archivo seleccionado';
+        fileLabel.style.color = 'var(--muted)';
+        btnUpload.disabled = true;
+      }
+    });
+
+    /* ── upload por AJAX ── */
+    btnUpload.closest('form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      var file = fileInput.files[0];
+      if (!file) return;
+      btnUpload.classList.add('loading');
+      btnUpload.disabled = true;
+      overlayFn.textContent = file.name;
+      overlay.classList.add('active');
+      var formData = new FormData();
+      formData.append('file', file);
+      setTimeout(function() {
+        fetch('/upload', { method: 'POST', body: formData })
+          .then(function(r) { return r.json(); })
+          .then(function() {
+            overlay.classList.remove('active');
+            btnUpload.classList.remove('loading');
+            fileInput.value = '';
+            fileLabel.textContent = 'ningún archivo seleccionado';
+            fileLabel.style.color = 'var(--muted)';
+            btnUpload.disabled = true;
+            refreshFiles();
+          });
+      }, 3000);
+    });
+
+    /* ── construir elemento DOM de un archivo ── */
+    function createFileItem(name) {
+      var div = document.createElement('div');
+      div.className = 'file-item';
+      div.dataset.file = name;
+      div.innerHTML =
+        '<div class="file-icon">' +
+          '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">' +
+            '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>' +
+            '<polyline points="14 2 14 8 20 8"/>' +
+          '</svg>' +
+        '</div>' +
+        '<span class="file-name-text">' + name + '</span>' +
+        '<div class="file-actions">' +
+          '<a class="btn-dl" href="/download/' + name + '">' +
+            '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">' +
+              '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>' +
+              '<polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>' +
+            '</svg>Descargar' +
+          '</a>' +
+          '<button class="btn-rm" onclick="deleteFile(\'' + name + '\')">' +
+            '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">' +
+              '<polyline points="3 6 5 6 21 6"/>' +
+              '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>' +
+            '</svg>Eliminar' +
+          '</button>' +
+        '</div>';
+      return div;
+    }
+
+    var emptyHTML =
+      '<div class="empty-state">' +
+        '<svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">' +
+          '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>' +
+        '</svg>' +
+        '<p>Ningún archivo subido aún.<br>Usa el formulario de arriba para comenzar.</p>' +
+      '</div>';
+
+    /* ── animar salida y eliminar del DOM ── */
+    function animateOut(el, cb) {
+      el.classList.add('leaving');
+      el.addEventListener('animationend', function() {
+        el.remove();
+        if (cb) cb();
+      }, { once: true });
+    }
+
+    /* ── eliminar archivo ── */
+    function deleteFile(name) {
+      if (!confirm('¿Eliminar ' + name + '?')) return;
+      var el = filesGrid.querySelector('[data-file="' + name + '"]');
+      if (el) {
+        animateOut(el, function() {
+          fetch('/delete/' + name, { method: 'DELETE' })
+            .then(function() {
+              knownFiles = knownFiles.filter(function(f) { return f !== name; });
+              if (filesGrid.querySelectorAll('.file-item').length === 0) {
+                filesGrid.innerHTML = emptyHTML;
+              }
+            });
+        });
+      }
+    }
+
+    /* ── polling con diff + animaciones ── */
+    var knownFiles = [];
+    var isFirstLoad = true;
+
+    function refreshFiles() {
+      fetch('/files')
+        .then(function(r) { return r.json(); })
+        .then(function(files) {
+          if (JSON.stringify(files) === JSON.stringify(knownFiles)) return;
+
+          var added   = files.filter(function(f) { return !knownFiles.includes(f); });
+          var removed = knownFiles.filter(function(f) { return !files.includes(f); });
+          knownFiles = files;
+
+          /* quitar empty-state si van a llegar archivos */
+          if (files.length > 0 && filesGrid.querySelector('.empty-state')) {
+            filesGrid.innerHTML = '';
+          }
+
+          /* salida animada de eliminados */
+          if (!isFirstLoad) {
+            removed.forEach(function(name) {
+              var el = filesGrid.querySelector('[data-file="' + name + '"]');
+              if (el) animateOut(el);
+            });
+          }
+
+          /* entrada animada de nuevos, escalonada en primera carga */
+          added.forEach(function(name, i) {
+            var el = createFileItem(name);
+            el.style.animationDelay = (isFirstLoad ? i * 70 : 0) + 'ms';
+            filesGrid.appendChild(el);
+          });
+
+          /* mostrar empty-state si quedó vacío */
+          setTimeout(function() {
+            if (files.length === 0 && filesGrid.querySelectorAll('.file-item').length === 0) {
+              filesGrid.innerHTML = emptyHTML;
+            }
+          }, 400);
+
+          isFirstLoad = false;
+        });
+    }
+
+    refreshFiles();
+    setInterval(refreshFiles, 2000);
+  </script>
+</body>
+</html>

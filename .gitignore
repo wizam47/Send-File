@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Entorno virtual (si usas uno)
+venv/
+env/
+
+# Archivos subidos por usuarios (no subir al repo)
+uploads/*
+!uploads/.gitkeep
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# VS Code
+.vscode/
+
+# Variables de entorno
+.env
