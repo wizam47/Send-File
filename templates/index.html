@@ -82,6 +82,20 @@
       position: relative;
       overflow: hidden;
     }
+    
+    /* degradado solo en el hero */
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 50%, rgba(0,255,13,0.13) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 80% at 75% 20%, rgba(0,200,10,0.08) 0%, transparent 65%),
+        radial-gradient(ellipse 50% 50% at 50% 100%, rgba(0,255,13,0.06) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .hero > * { position: relative; z-index: 1; }
 
     /* animation side */
     .hero-visual {
@@ -422,6 +436,62 @@
     }
     .empty-state svg { margin-bottom: 12px; opacity: 0.3; }
 
+    /* ── MODAL ELIMINAR ─────────────────────────────────── */
+    #delete-modal {
+      display: none;
+      position: fixed; inset: 0; z-index: 998;
+      align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(8px);
+    }
+    #delete-modal.active { display: flex; }
+    .modal-box {
+      background: #111;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px 28px 24px;
+      width: 90%; max-width: 400px;
+      box-shadow: 0 0 40px rgba(0,0,0,0.6);
+      animation: modalIn 0.25s cubic-bezier(0.22,1,0.36,1) both;
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.93) translateY(12px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .modal-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.125rem; font-weight: 700;
+      margin-bottom: 10px; letter-spacing: -0.02em;
+    }
+    .modal-body {
+      color: var(--muted); font-size: 0.9rem;
+      line-height: 1.55; margin-bottom: 24px;
+    }
+    .modal-body strong { color: var(--white); }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .btn-modal-cancel {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 10px 22px; border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.875rem; font-weight: 500;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-modal-cancel:hover { border-color: rgba(255,255,255,0.25); color: var(--white); }
+    .btn-modal-confirm {
+      background: rgba(220,40,40,0.85);
+      color: #fff;
+      border: 1px solid rgba(255,60,60,0.3);
+      padding: 10px 22px; border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.875rem; font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-modal-confirm:hover { background: rgba(220,40,40,1); }
+
     /* ── BRANDS BAR ─────────────────────────────────────── */
     .brands-bar {
       border-top: 1px solid var(--border);
@@ -582,15 +652,14 @@
                 </svg>
                 Descargar
               </a>
-              <a class="btn-rm" href="/delete/{{ file }}"
-                 onclick="return confirm('¿Eliminar {{ file }}?')">
+              <button class="btn-rm" onclick="deleteFile('{{ file }}')">
                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <polyline points="3 6 5 6 21 6"/>
                   <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
                   <path d="M10 11v6M14 11v6"/>
                 </svg>
                 Eliminar
-              </a>
+              </button>
             </div>
           </div>
           {% endfor %}
@@ -604,8 +673,19 @@
         {% endif %}
       </div>
     </section>
-
   </main>
+
+   <!-- MODAL ELIMINAR -->
+  <div id="delete-modal">
+    <div class="modal-box">
+      <p class="modal-title">Eliminar archivo</p>
+      <p class="modal-body">¿Estás seguro de que quieres eliminar <strong id="modal-filename"></strong>? Esta acción no se puede deshacer.</p>
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" id="modal-cancel">Cancelar</button>
+        <button class="btn-modal-confirm" id="modal-confirm">Eliminar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- BRANDS BAR -->
   <div class="brands-bar">
@@ -760,9 +840,25 @@
       }, { once: true });
     }
 
-    /* ── eliminar archivo ── */
-    function deleteFile(name) {
-      if (!confirm('¿Eliminar ' + name + '?')) return;
+    /* ── modal de confirmación ── */
+    var deleteModal   = document.getElementById('delete-modal');
+    var modalFilename = document.getElementById('modal-filename');
+    var modalCancel   = document.getElementById('modal-cancel');
+    var modalConfirm  = document.getElementById('modal-confirm');
+    var pendingDelete = null;
+
+    modalCancel.addEventListener('click', function() {
+      deleteModal.classList.remove('active');
+      pendingDelete = null;
+    });
+    deleteModal.addEventListener('click', function(e) {
+      if (e.target === deleteModal) { deleteModal.classList.remove('active'); pendingDelete = null; }
+    });
+    modalConfirm.addEventListener('click', function() {
+      if (!pendingDelete) return;
+      var name = pendingDelete;
+      pendingDelete = null;
+      deleteModal.classList.remove('active');
       var el = filesGrid.querySelector('[data-file="' + name + '"]');
       if (el) {
         animateOut(el, function() {
@@ -775,6 +871,13 @@
             });
         });
       }
+    });
+
+    /* ── eliminar archivo ── */
+    function deleteFile(name) {
+      pendingDelete = name;
+      modalFilename.textContent = name;
+      deleteModal.classList.add('active');
     }
 
     /* ── polling con diff + animaciones ── */
